@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
         }
 
         // Check if user already exists
-        let existingUser = await User.findOne({ email });
+        let existingUser = await User.findOne({ email }).exec();
         if (existingUser) {
             return res.status(400).json({ message: 'Email already registered' });
         }
@@ -42,7 +42,14 @@ exports.register = async (req, res) => {
             role
         });
 
-        const savedUser = await user.save();
+        // Save user with explicit promise handling
+        const savedUser = await user.save().then(doc => {
+            console.log('User successfully saved:', doc._id);
+            return doc;
+        }).catch(err => {
+            console.error('Error saving user:', err);
+            throw err;
+        });
 
         // Generate JWT token
         const token = jwt.sign(

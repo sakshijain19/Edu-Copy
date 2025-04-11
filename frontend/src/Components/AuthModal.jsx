@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-const AuthModal = ({ onClose, onAuthSuccess }) => {
+const AuthModal = ({ onClose }) => {
+  const { login, register, error: authError } = useAuth();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
@@ -9,7 +12,6 @@ const AuthModal = ({ onClose, onAuthSuccess }) => {
     password: '',
     role: 'student'
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
@@ -22,24 +24,17 @@ const AuthModal = ({ onClose, onAuthSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const response = await axios.post(endpoint, formData);
+      const result = isLogin
+        ? await login(formData)
+        : await register(formData);
 
-      // Store token in localStorage
-      localStorage.setItem('token', response.data.token);
-      
-      // Set authorization header for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-
-      // Notify parent component of successful authentication
-      onAuthSuccess(response.data);
-      onClose();
-    } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
+      if (result.success) {
+        onClose();
+        navigate('/dashboard');
+      }
     } finally {
       setLoading(false);
     }
@@ -58,9 +53,9 @@ const AuthModal = ({ onClose, onAuthSuccess }) => {
           </button>
         </div>
 
-        {error && (
+        {authError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+            {authError}
           </div>
         )}
 
@@ -136,10 +131,7 @@ const AuthModal = ({ onClose, onAuthSuccess }) => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-              }}
+              onClick={() => setIsLogin(!isLogin)}
               className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
             >
               {isLogin ? 'Create an account' : 'Already have an account? Login'}
