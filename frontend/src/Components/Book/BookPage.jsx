@@ -35,7 +35,7 @@ const BooksPage = () => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [message, setMessage] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
-  const [priceRange, setPriceRange] = useState("");
+  const [priceRange, setPriceRange] = useState([0, 2000]);
   const [books, setBooks] = useState([]);
 
   // Fetch books via bookService using the backend URL from env
@@ -181,19 +181,16 @@ const BooksPage = () => {
   // Filtered books (using local search/filter; adjust as needed)
   const filteredBooks = Array.isArray(books)
     ? books.filter((book) => {
-      if (!book) return false;
-      const matchesLocation =
-        !location || book.location?.toLowerCase().includes(location.toLowerCase());
-      const matchesSearchQuery =
-        !searchQuery || book.title?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPriceRange =
-        !priceRange ||
-        (priceRange === "1000+"
-          ? book.price >= 1000
-          : book.price >= parseInt(priceRange.split("-")[0]) &&
-          book.price <= parseInt(priceRange.split("-")[1]));
-      return matchesLocation && matchesSearchQuery && matchesPriceRange;
-    })
+        if (!book) return false;
+        const matchesLocation =
+          !location || book.location?.toLowerCase().includes(location.toLowerCase());
+        const matchesSearchQuery =
+          !searchQuery || book.title?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesPriceRange =
+          !priceRange ||
+          (priceRange[0] <= book.price && book.price <= priceRange[1]);
+        return matchesLocation && matchesSearchQuery && matchesPriceRange;
+      })
     : [];
 
   const handleBookClick = (book) => {
@@ -260,23 +257,39 @@ const BooksPage = () => {
                   className="w-full"
                 />
               </div>
-              <Select value={priceRange} onValueChange={setPriceRange}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Filter by price" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="100-200">₹100 - ₹200</SelectItem>
-                  <SelectItem value="200-300">₹200 - ₹300</SelectItem>
-                  <SelectItem value="300-400">₹300 - ₹400</SelectItem>
-                  <SelectItem value="400-500">₹400 - ₹500</SelectItem>
-                  <SelectItem value="500-600">₹500 - ₹600</SelectItem>
-                  <SelectItem value="600-700">₹600 - ₹700</SelectItem>
-                  <SelectItem value="700-800">₹700 - ₹800</SelectItem>
-                  <SelectItem value="800-900">₹800 - ₹900</SelectItem>
-                  <SelectItem value="900-1000">₹900 - ₹1000</SelectItem>
-                  <SelectItem value="1000+">₹1000+</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative w-full md:w-1/3 bg-white rounded-lg shadow p-1">
+                <h3 className="text-lg font-semibold mb-4">Price</h3>
+                <div className="flex items-center mb-2">
+                  <span className="text-lg font-medium">₹{priceRange[0]} - ₹{priceRange[1]}+</span>
+                </div>
+                <div className="relative mt-4">
+                  <div className="absolute h-1 w-full bg-blue-200 rounded">
+                    <div
+                      className="absolute h-1 bg-blue-500"
+                      style={{
+                        left: `${(priceRange[0] / 2000) * 100}%`,
+                        right: `${100 - (priceRange[1] / 2000) * 100}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2000"
+                    value={priceRange[0]}
+                    onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+                    className="absolute w-full h-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max="2000"
+                    value={priceRange[1]}
+                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                    className="absolute w-full h-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer"
+                  />
+                </div>
+              </div>
             </div>
           )}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
