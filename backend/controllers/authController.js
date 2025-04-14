@@ -1,8 +1,8 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
 
 // Register a new user
-exports.register = async (req, res) => {
+export const register = async (req, res) => {
     try {
         const { name, email, password, role = 'student' } = req.body;
 
@@ -77,7 +77,7 @@ exports.register = async (req, res) => {
 };
 
 // Login user
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -116,7 +116,7 @@ exports.login = async (req, res) => {
 };
 
 // Get user profile
-exports.getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select('-password');
         if (!user) {
@@ -130,7 +130,7 @@ exports.getProfile = async (req, res) => {
 };
 
 // Verify token
-exports.verify = async (req, res) => {
+export const verify = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select('-password');
         if (!user) {
@@ -151,7 +151,7 @@ exports.verify = async (req, res) => {
 };
 
 // Update user profile
-exports.updateProfile = async (req, res) => {
+export const updateProfile = async (req, res) => {
     try {
         const { name, email } = req.body;
         const user = await User.findById(req.user.userId);

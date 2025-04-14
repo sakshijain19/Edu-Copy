@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import Note from '../models/Note.js';
+import auth from '../middleware/auth.js';
+
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const Note = require('../models/Note');
-const auth = require('../middleware/auth');
 
 // Configure multer for PDF upload
 const storage = multer.diskStorage({
@@ -164,4 +165,4 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

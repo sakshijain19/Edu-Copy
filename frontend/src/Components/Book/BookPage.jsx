@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
-import { Search, MapPin, IndianRupee, ArrowLeft, Send } from "lucide-react";
-import axios from 'axios';
-import AuthModal from '../AuthModal/AuthModal.jsx';
+import { Search, MapPin, IndianRupee, ArrowLeft } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 import { Input } from "../BookCompo/Input/Input";
 import { Button } from "../BookCompo/Button/Button";
 import {
@@ -16,7 +15,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "../BookCompo/Card/Card";
@@ -26,8 +24,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "../BookCompo/Tabs/Tabs";
+import { toast } from "react-hot-toast";
+import bookService from "../../services/bookService";
 
 const BooksPage = () => {
+  const { isAuthenticated } = useAuth();
   const [location, setLocation] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("browse");
@@ -35,90 +36,85 @@ const BooksPage = () => {
   const [message, setMessage] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [priceRange, setPriceRange] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
-  useEffect(() => {
-    // Check authentication status when component mounts
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setIsAuthenticated(false);
-          return;
-        }
-
-        const response = await axios.get('/api/auth/verify', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setIsAuthenticated(true);
-        setAuthError('');
-      } catch (error) {
-        setIsAuthenticated(false);
-        setAuthError('Please login to access all features');
-        localStorage.removeItem('token');
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  // Load books from API
   const [books, setBooks] = useState([]);
 
+  // Fetch books via bookService using the backend URL from env
   useEffect(() => {
     const fetchBooks = async () => {
       try {
-        const response = await axios.get('/api/books');
-        setBooks(Array.isArray(response.data) ? response.data : []);
+        const booksData = await bookService.getAllBooks();
+        // Adjust if your backend returns an object like { count, books }
+        setBooks(Array.isArray(booksData) ? booksData : booksData.books);
       } catch (error) {
-        console.error('Error fetching books:', error);
+        console.error("Error fetching books:", error);
         setBooks([]);
+        toast.error("Failed to load books");
       }
     };
 
     fetchBooks();
   }, []);
 
+  // Form state for selling a book
   const [sellFormData, setSellFormData] = useState({
     bookImage: null,
-    bookTitle: "",
+    title: "",
     author: "",
-    condition: "",
-    language: "",
+    category: "academic",
+    condition: "Good",
     upiId: "",
-    mobileNumber: "",
     phone: "",
     price: "",
     location: "",
-    edition: "",
-    pages: "",
     description: "",
+    status: "available",
   });
 
+  // Handle input changes (except file)
   const handleSellFormChange = (e) => {
     const { name, value } = e.target;
 
-    // Add validation for author field
-    if (name === "author") {
-      // Allow only letters and spaces
-      if (!/^[A-Za-z\s]*$/.test(value)) {
-        alert("Author name should contain only alphabets");
-        return;
-      }
+    // Validation rules for specific fields
+    switch (name) {
+      case "author":
+        if (!/^[A-Za-z\s]*$/.test(value)) {
+          toast.error("Author name should contain only alphabets");
+          return;
+        }
+        break;
+      case "phone":
+        if (value && !/^\+91[0-9]{10}$/.test(value)) {
+          toast.error("Please enter a valid Indian phone number (+91XXXXXXXXXX)");
+          return;
+        }
+        break;
+      case "upiId":
+        if (value && !value.endsWith("@ybl")) {
+          toast.error("UPI ID must end with @ybl");
+          return;
+        }
+        break;
+      case "price":
+        if (value && !/^\d+$/.test(value)) {
+          toast.error("Price must be a number");
+          return;
+        }
+        break;
+      default:
+        break;
     }
+
     setSellFormData((prevState) => ({
       ...prevState,
       [name]: value,
     }));
   };
 
+  // Handle file input for book image
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file && !file.type.startsWith("image/")) {
-      alert("Please select an image file.");
+      toast.error("Please select an image file.");
       return;
     }
     setSellFormData((prevState) => ({
@@ -127,123 +123,78 @@ const BooksPage = () => {
     }));
   };
 
+  // Submit the sell book form
   const handleSellFormSubmit = async (e) => {
     e.preventDefault();
 
     if (!isAuthenticated) {
-      setShowAuthModal(true);
+      toast.error("Please login to sell a book");
       return;
     }
 
     const requiredFields = [
       "bookImage",
-      "bookTitle",
+      "title",
       "author",
+      "category",
       "condition",
-      "language",
       "upiId",
-      "mobileNumber",
+      "phone",
       "price",
       "location",
-      "pages",
+      "description",
     ];
 
     for (const field of requiredFields) {
       if (!sellFormData[field]) {
-        alert(
-          `Please fill in the ${field.replace(/([A-Z])/g, " $1").toLowerCase()}.`,
-        );
+        toast.error(`Please fill in the ${field.replace(/([A-Z])/g, " $1").toLowerCase()}.`);
         return;
       }
     }
 
-    // Validate UPI ID format
-    if (!sellFormData.upiId.endsWith('@ybl')) {
-      alert('UPI ID must end with @ybl');
-      return;
-    }
-
-    // Validate phone number format
-    const phoneRegex = /^\+91[0-9]{10}$/;
-    if (!phoneRegex.test(sellFormData.mobileNumber)) {
-      alert('Please enter a valid Indian phone number (+91XXXXXXXXXX)');
-      return;
-    }
-
     try {
-      const formData = new FormData();
-      formData.append('image', sellFormData.bookImage);
-      formData.append('title', sellFormData.bookTitle);
-      formData.append('author', sellFormData.author);
-      formData.append('price', sellFormData.price);
-      formData.append('location', sellFormData.location);
-      formData.append('edition', sellFormData.edition);
-      formData.append('language', sellFormData.language.toLowerCase());
-      formData.append('upiId', sellFormData.upiId);
-      formData.append('phone', sellFormData.mobileNumber);
-      formData.append('description', sellFormData.description);
-      formData.append('condition', sellFormData.condition);
-      formData.append('pages', sellFormData.pages);
-
-      const token = localStorage.getItem('token');
-      const response = await axios.post('/api/books/list', formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      setBooks([...books, response.data]);
-      alert('Book listed for sale successfully!');
-
-      // Reset form after successful submission
+      // Call backend API via bookService
+      const response = await bookService.createBook(sellFormData);
+      setBooks([...books, response]);
+      toast.success("Book listed for sale successfully!");
+      // Reset the form
       setSellFormData({
         bookImage: null,
-        bookTitle: "",
+        title: "",
         author: "",
-        condition: "",
-        language: "",
+        category: "academic",
+        condition: "Good",
         upiId: "",
-        mobileNumber: "+91",
+        phone: "",
         price: "",
         location: "",
-        edition: "",
-        pages: "",
         description: "",
+        status: "available",
       });
+      setActiveTab("browse");
     } catch (error) {
-      console.error('Error listing book:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to list book. Please try again.';
-      alert(errorMessage);
+      console.error("Error listing book:", error);
+      toast.error(error.response?.data?.message || "Error listing book for sale");
     }
-
-    // Reset the form
-    setSellFormData({
-      bookImage: null,
-      bookTitle: "",
-      author: "",
-      condition: "",
-      language: "",
-      upiId: "",
-      mobileNumber: "+91",
-      price: "",
-      location: "",
-      edition: "",
-      pages: "",
-      description: "",
-    });
   };
 
-  const filteredBooks = Array.isArray(books) ? books.filter((book) => {
-    if (!book) return false;
-    const matchesLocation = !location || book.location?.toLowerCase().includes(location.toLowerCase());
-    const matchesSearchQuery = !searchQuery || book.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPriceRange = !priceRange || (
-      priceRange === "1000+" ? book.price >= 1000 :
-      book.price >= parseInt(priceRange.split("-")[0]) && book.price <= parseInt(priceRange.split("-")[1])
-    );
-    return matchesLocation && matchesSearchQuery && matchesPriceRange;
-  }) : [];
+  // Filtered books (using local search/filter; adjust as needed)
+  const filteredBooks = Array.isArray(books)
+    ? books.filter((book) => {
+      if (!book) return false;
+      const matchesLocation =
+        !location || book.location?.toLowerCase().includes(location.toLowerCase());
+      const matchesSearchQuery =
+        !searchQuery || book.title?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPriceRange =
+        !priceRange ||
+        (priceRange === "1000+"
+          ? book.price >= 1000
+          : book.price >= parseInt(priceRange.split("-")[0]) &&
+          book.price <= parseInt(priceRange.split("-")[1]));
+      return matchesLocation && matchesSearchQuery && matchesPriceRange;
+    })
+    : [];
 
   const handleBookClick = (book) => {
     setSelectedBook(book);
@@ -255,25 +206,30 @@ const BooksPage = () => {
 
   const handleSendMessage = async () => {
     if (!isAuthenticated) {
-      setShowAuthModal(true);
+      toast.error("Please login to send a message");
+      return;
+    }
+
+    if (!message.trim() || !buyerPhone.trim()) {
+      toast.error("Please enter both message and phone number");
       return;
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/books/${selectedBook.id}/messages`, {
-        message,
-        buyerPhone
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      alert('Message sent to the seller successfully!');
-      setMessage('');
-      setBuyerPhone('');
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `/api/books/${selectedBook.id}/messages`,
+        { message, buyerPhone },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success("Message sent to the seller successfully!");
+      setMessage("");
+      setBuyerPhone("");
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message. Please try again.");
     }
   };
 
@@ -282,7 +238,6 @@ const BooksPage = () => {
       <h1 className="text-4xl font-bold text-center mb-8 text-black">
         Books Marketplace
       </h1>
-
       {!selectedBook && (
         <>
           {activeTab === "browse" && (
@@ -324,37 +279,29 @@ const BooksPage = () => {
               </Select>
             </div>
           )}
-
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="flex justify-center mb-6">
               <TabsTrigger
                 value="browse"
-                className={`px-4 py-2 rounded-md transition-all duration-300 ${
-                  activeTab === "browse"
-                    ? "bg-gray-500 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-800"
-                } focus:outline-none hover:bg-gray-400`}
+                className={`px-4 py-2 rounded-md transition-all duration-300 ${activeTab === "browse"
+                  ? "bg-gray-500 text-white shadow-lg"
+                  : "bg-gray-200 text-gray-800"
+                  } focus:outline-none hover:bg-gray-400`}
                 onClick={() => setActiveTab("browse")}
               >
                 Browse Books
               </TabsTrigger>
               <TabsTrigger
                 value="sell"
-                className={`px-4 py-2 rounded-md transition-all duration-300 ${
-                  activeTab === "sell"
-                    ? "bg-gray-600 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-800"
-                } focus:outline-none hover:bg-gray-400`}
+                className={`px-4 py-2 rounded-md transition-all duration-300 ${activeTab === "sell"
+                  ? "bg-gray-600 text-white shadow-lg"
+                  : "bg-gray-200 text-gray-800"
+                  } focus:outline-none hover:bg-gray-400`}
                 onClick={() => setActiveTab("sell")}
               >
                 Sell a Book
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value="browse">
               {filteredBooks.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -366,15 +313,18 @@ const BooksPage = () => {
                     >
                       <div className="relative">
                         <img
-                          src={book.image}
+                          src={`http://localhost:5001${book.image}`}
                           alt={book.title}
                           className="w-full h-48 object-cover"
                         />
+
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
                           <h3 className="text-white font-semibold text-lg">
                             {book.title}
                           </h3>
-                          <p className="text-white/90 text-sm">{book.author}</p>
+                          <p className="text-white/90 text-sm">
+                            {book.author}
+                          </p>
                         </div>
                       </div>
                       <div className="p-4">
@@ -403,7 +353,6 @@ const BooksPage = () => {
                 </div>
               )}
             </TabsContent>
-
             <TabsContent value="sell">
               <Card>
                 <CardHeader>
@@ -416,169 +365,207 @@ const BooksPage = () => {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSellFormSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Book Image
-                      </label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">
+                          Book Image*
+                        </label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Upload a clear image of your book's cover
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Book Title*
+                        </label>
+                        <Input
+                          type="text"
+                          name="title"
+                          value={sellFormData.title}
+                          onChange={handleSellFormChange}
+                          placeholder="Enter book title"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Author*
+                        </label>
+                        <Input
+                          type="text"
+                          name="author"
+                          value={sellFormData.author}
+                          onChange={handleSellFormChange}
+                          placeholder="Enter author name"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Category*
+                        </label>
+                        <Select
+                          name="category"
+                          value={sellFormData.category}
+                          onValueChange={(value) =>
+                            handleSellFormChange({
+                              target: { name: "category", value },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg mt-1 z-50">
+                            <SelectItem
+                              value="academic"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Academic
+                            </SelectItem>
+                            <SelectItem
+                              value="non-academic"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Non-Academic
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Book Condition*
+                        </label>
+                        <Select
+                          name="condition"
+                          value={sellFormData.condition}
+                          onValueChange={(value) =>
+                            handleSellFormChange({
+                              target: { name: "condition", value },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <SelectValue placeholder="Select condition" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg mt-1 z-50">
+                            <SelectItem
+                              value="New"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              New
+                            </SelectItem>
+                            <SelectItem
+                              value="Like New"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Like New
+                            </SelectItem>
+                            <SelectItem
+                              value="Good"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Good
+                            </SelectItem>
+                            <SelectItem
+                              value="Fair"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Fair
+                            </SelectItem>
+                            <SelectItem
+                              value="Poor"
+                              className="py-2 px-4 hover:bg-blue-50 cursor-pointer"
+                            >
+                              Poor
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Price (₹)*
+                        </label>
+                        <Input
+                          type="number"
+                          name="price"
+                          value={sellFormData.price}
+                          onChange={handleSellFormChange}
+                          placeholder="Enter price in rupees"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Location*
+                        </label>
+                        <Input
+                          type="text"
+                          name="location"
+                          value={sellFormData.location}
+                          onChange={handleSellFormChange}
+                          placeholder="Enter your location"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Phone Number*
+                        </label>
+                        <Input
+                          type="tel"
+                          name="phone"
+                          value={sellFormData.phone}
+                          onChange={handleSellFormChange}
+                          placeholder="+91XXXXXXXXXX"
+                          pattern="^\+91[0-9]{10}$"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Format: +91XXXXXXXXXX
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          UPI ID*
+                        </label>
+                        <Input
+                          type="text"
+                          name="upiId"
+                          value={sellFormData.upiId}
+                          onChange={handleSellFormChange}
+                          placeholder="Enter UPI ID (@ybl)"
+                          pattern=".*@ybl$"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Must end with @ybl
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">
+                          Description*
+                        </label>
+                        <textarea
+                          name="description"
+                          value={sellFormData.description}
+                          onChange={handleSellFormChange}
+                          placeholder="Describe your book's condition, edition, or any other relevant details"
+                          className="w-full min-h-[100px] p-2 border rounded-md"
+                          required
+                        />
+                      </div>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Book Title
-                      </label>
-                      <Input
-                        name="bookTitle"
-                        value={sellFormData.bookTitle}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter book title"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Author
-                      </label>
-                      <Input
-                        name="author"
-                        value={sellFormData.author}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter author name"
-                        pattern="[A-Za-z\s]+"
-                        title="Please enter only alphabets"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Condition
-                      </label>
-                      <Select
-                        value={sellFormData.condition}
-                        onValueChange={(value) =>
-                          handleSellFormChange({
-                            target: { name: "condition", value },
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select book condition" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="good">Good</SelectItem>
-                          <SelectItem value="fair">Average</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Language
-                      </label>
-                      <Input
-                        name="language"
-                        value={sellFormData.language}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter book language"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        UPI ID
-                      </label>
-                      <Input
-                        name="upiId"
-                        value={sellFormData.upiId}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter UPI ID (must end with @ybl)"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Mobile Number
-                      </label>
-                      <Input
-                        name="mobileNumber"
-                        value={sellFormData.mobileNumber}
-                        onChange={handleSellFormChange}
-                        placeholder="+91"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Price
-                      </label>
-                      <Input
-                        name="price"
-                        type="number"
-                        value={sellFormData.price}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter price"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Your Location
-                      </label>
-                      <Input
-                        name="location"
-                        value={sellFormData.location}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter your location"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Edition
-                      </label>
-                      <Input
-                        name="edition"
-                        value={sellFormData.edition}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter book edition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Pages
-                      </label>
-                      <Input
-                        name="pages"
-                        type="number"
-                        value={sellFormData.pages}
-                        onChange={handleSellFormChange}
-                        placeholder="Enter number of pages"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Book Description
-                      </label>
-                      <textarea
-                        name="description"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-600"
-                        placeholder="Book Description"
-                        rows={4}
-                        value={sellFormData.description}
-                        onChange={handleSellFormChange}
-                      ></textarea>
-                    </div>
-
                     <Button
                       type="submit"
-                      className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-black bg-blue hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+                      className="w-full bg-[#4285f4] hover:bg-[#3367d6] text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
                     >
                       List Book for Sale
                     </Button>
@@ -589,7 +576,6 @@ const BooksPage = () => {
           </Tabs>
         </>
       )}
-
       {selectedBook && (
         <div className="mt-8">
           <Button onClick={handleBackClick} className="mb-4 flex items-center">
@@ -602,10 +588,11 @@ const BooksPage = () => {
             </CardHeader>
             <CardContent>
               <img
-                src={selectedBook.image}
+                src={`http://localhost:5001${selectedBook.image}`}
                 alt={selectedBook.title}
                 className="w-full h-64 object-cover mb-4"
               />
+
               <p className="flex items-center text-gray-700 mb-2">
                 <MapPin className="w-4 h-4 mr-2" /> {selectedBook.location}
               </p>
@@ -624,10 +611,12 @@ const BooksPage = () => {
               <p className="text-gray-700 mb-4">
                 <strong>Description:</strong> {selectedBook.description}
               </p>
-
               <div className="mt-6">
                 <p className="text-gray-700 mb-4">
-                  <strong><h3>Contact Seller</h3></strong> {selectedBook.phone}
+                  <strong>
+                    <h3>Contact Seller</h3>
+                  </strong>{" "}
+                  {selectedBook.phone}
                 </p>
                 <input
                   type="tel"
@@ -648,9 +637,14 @@ const BooksPage = () => {
                 ></textarea>
                 <div className="space-y-2">
                   <a
-                    href={`https://wa.me/${selectedBook?.phone ? selectedBook.phone.replace(/[^0-9]/g, "") : ""}?text=${encodeURIComponent(
-                      `Hi, I'm interested in buying your book "${selectedBook?.title || ""}" listed on EduTrade.\n\nMessage: ${message}\n\nPrice: ₹${selectedBook?.price || ""}\n\nBuyer's Contact: ${buyerPhone}`,
-                    )}`}
+                    href={`https://wa.me/${selectedBook?.phone
+                      ? selectedBook.phone.replace(/[^0-9]/g, "")
+                      : ""
+                      }?text=${encodeURIComponent(
+                        `Hi, I'm interested in buying your book "${selectedBook?.title ||
+                        ""}" listed on EduTrade.\n\nMessage: ${message}\n\nPrice: ₹${selectedBook?.price || ""
+                        }\n\nBuyer's Contact: ${buyerPhone}`
+                      )}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full"
@@ -671,17 +665,6 @@ const BooksPage = () => {
             </CardContent>
           </Card>
         </div>
-      )}
-      {showAuthModal && (
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onAuthSuccess={() => {
-            setIsAuthenticated(true);
-            setAuthError('');
-            setShowAuthModal(false);
-          }}
-        />
       )}
     </div>
   );

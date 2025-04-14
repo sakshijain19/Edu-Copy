@@ -1,11 +1,11 @@
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
 // MongoDB Connection with better error handling
-const connectDB = async () => {
+export const connectDB = async () => {
     try {
         console.log('Attempting to connect to MongoDB...');
         console.log('MongoDB URI:', process.env.MONGODB_URI);
@@ -51,7 +51,7 @@ const connectDB = async () => {
 };
 
 // Function to check database status
-const checkDBStatus = async () => {
+export const checkDBStatus = async () => {
     try {
         const collections = await mongoose.connection.db.listCollections().toArray();
         const dbStats = await mongoose.connection.db.stats();
@@ -69,9 +69,4 @@ const checkDBStatus = async () => {
             stack: error.stack
         };
     }
-};
-
-module.exports = {
-    connectDB,
-    checkDBStatus
 }; 

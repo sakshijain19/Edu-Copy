@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import Feedback from '../models/Feedback.js';
+import auth from '../middleware/auth.js';
+
 const router = express.Router();
-const Feedback = require('../models/Feedback');
-const auth = require('../middleware/auth');
 
 // Submit feedback
 router.post('/', auth, async (req, res) => {
@@ -96,11 +97,11 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this feedback' });
         }
 
-        await feedback.remove();
+        await Feedback.findByIdAndDelete(req.params.id);
         res.json({ message: 'Feedback deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting feedback', error: error.message });
     }
 });
 
-module.exports = router; 
+export default router; 

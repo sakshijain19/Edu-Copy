@@ -1,9 +1,15 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import Book from '../models/Book.js';
+import auth from '../middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const Book = require('../models/Book');
-const auth = require('../middleware/auth');
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
@@ -11,7 +17,8 @@ const storage = multer.diskStorage({
         cb(null, 'uploads/books');
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
     }
 });
 
@@ -19,50 +26,69 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 5000000 }, // 5MB limit
     fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = filetypes.test(file.mimetype);
+        const allowedTypes = /jpeg|jpg|png|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
         if (extname && mimetype) {
             return cb(null, true);
         } else {
-            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+            cb(new Error('Only image files (jpeg, jpg, png, webp) are allowed!'));
         }
     }
 });
 
-// List a book for sale
+// List a new book
 router.post('/list', auth, upload.single('image'), async (req, res) => {
     try {
-        const { 
-            title, 
-            author, 
-            description, 
-            price, 
-            condition, 
-            language,
+        const {
+            title,
+            author,
+            category,
+            condition,
+            price,
             location,
+            description,
             upiId,
             phone,
-            edition,
-            pages
+            status = 'available'
         } = req.body;
-        
+
+        // Validate required fields
+        if (!title || !author || !category || !condition || !price || !location || !description || !upiId || !phone) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        // Validate price
+        if (isNaN(price) || price <= 0) {
+            return res.status(400).json({ message: 'Price must be a positive number' });
+        }
+
+        // Validate phone number
+        if (!/^\+91[0-9]{10}$/.test(phone)) {
+            return res.status(400).json({ message: 'Invalid phone number format' });
+        }
+
+        // Validate UPI ID
+        if (!upiId.endsWith('@ybl')) {
+            return res.status(400).json({ message: 'UPI ID must end with @ybl' });
+        }
+
         if (!req.file) {
-            return res.status(400).json({ message: 'Please upload a book image' });
+            return res.status(400).json({ message: 'Book image is required' });
         }
 
         const book = new Book({
             title,
             author,
-            description,
-            price,
+            category,
             condition,
-            language,
+            price: Number(price),
             location,
+            description,
             upiId,
             phone,
-            edition,
-            pages,
+            status,
             image: `/uploads/books/${req.file.filename}`,
             seller: req.user.userId
         });
@@ -70,6 +96,7 @@ router.post('/list', auth, upload.single('image'), async (req, res) => {
         await book.save();
         res.status(201).json(book);
     } catch (error) {
+        console.error('Error listing book:', error);
         res.status(500).json({ message: 'Error listing book', error: error.message });
     }
 });
@@ -77,30 +104,23 @@ router.post('/list', auth, upload.single('image'), async (req, res) => {
 // Get all books
 router.get('/', async (req, res) => {
     try {
-        const { 
-            language, 
-            condition, 
-            minPrice, 
-            maxPrice, 
-            search,
-            location 
-        } = req.query;
-        let query = {};
+        const { category, condition, minPrice, maxPrice, location, search } = req.query;
+        let query = { status: 'available' };
 
-        if (language) query.language = language;
+        if (category) query.category = category;
         if (condition) query.condition = condition;
-        if (location) query.location = { $regex: location, $options: 'i' };
+        if (location) query.location = new RegExp(location, 'i');
+        if (search) {
+            query.$or = [
+                { title: new RegExp(search, 'i') },
+                { author: new RegExp(search, 'i') },
+                { description: new RegExp(search, 'i') }
+            ];
+        }
         if (minPrice || maxPrice) {
             query.price = {};
             if (minPrice) query.price.$gte = Number(minPrice);
             if (maxPrice) query.price.$lte = Number(maxPrice);
-        }
-        if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { author: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
-            ];
         }
 
         const books = await Book.find(query)
@@ -109,6 +129,7 @@ router.get('/', async (req, res) => {
 
         res.json(books);
     } catch (error) {
+        console.error('Error fetching books:', error);
         res.status(500).json({ message: 'Error fetching books', error: error.message });
     }
 });
@@ -118,22 +139,24 @@ router.get('/:id', async (req, res) => {
     try {
         const book = await Book.findById(req.params.id)
             .populate('seller', 'name email');
-        
+
         if (!book) {
             return res.status(404).json({ message: 'Book not found' });
         }
 
         res.json(book);
     } catch (error) {
+        console.error('Error fetching book:', error);
         res.status(500).json({ message: 'Error fetching book', error: error.message });
     }
 });
 
-// Update book listing
-router.put('/:id', auth, upload.single('image'), async (req, res) => {
+// Update book status (e.g., mark as sold)
+router.patch('/:id/status', auth, async (req, res) => {
     try {
+        const { status } = req.body;
         const book = await Book.findById(req.params.id);
-        
+
         if (!book) {
             return res.status(404).json({ message: 'Book not found' });
         }
@@ -142,28 +165,21 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this book' });
         }
 
-        const updates = { ...req.body };
-        if (req.file) {
-            updates.image = `/uploads/books/${req.file.filename}`;
-        }
+        book.status = status;
+        await book.save();
 
-        const updatedBook = await Book.findByIdAndUpdate(
-            req.params.id,
-            updates,
-            { new: true }
-        );
-
-        res.json(updatedBook);
+        res.json(book);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating book', error: error.message });
+        console.error('Error updating book status:', error);
+        res.status(500).json({ message: 'Error updating book status', error: error.message });
     }
 });
 
-// Delete book listing
+// Delete book
 router.delete('/:id', auth, async (req, res) => {
     try {
         const book = await Book.findById(req.params.id);
-        
+
         if (!book) {
             return res.status(404).json({ message: 'Book not found' });
         }
@@ -175,6 +191,7 @@ router.delete('/:id', auth, async (req, res) => {
         await book.remove();
         res.json({ message: 'Book deleted successfully' });
     } catch (error) {
+        console.error('Error deleting book:', error);
         res.status(500).json({ message: 'Error deleting book', error: error.message });
     }
 });
@@ -198,8 +215,6 @@ router.post('/:id/message', auth, async (req, res) => {
         res.json({ 
             message: 'Message sent successfully',
             sellerPhone: book.seller.phone,
-            bookTitle: book.title,
-            buyerMessage: message,
             buyerPhone: buyerPhone
         });
     } catch (error) {
@@ -207,4 +222,4 @@ router.post('/:id/message', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

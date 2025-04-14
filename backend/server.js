@@ -1,8 +1,22 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const path = require('path');
-const { connectDB, checkDBStatus } = require('./db');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { connectDB, checkDBStatus } from './db.js';
+import User from './models/User.js';
+import authRoutes from './routes/auth.js';
+import bookRoutes from './routes/books.js';
+import notesRoutes from './routes/notes.js';
+import questionPapersRoutes from './routes/questionPapers.js';
+import feedbackRoutes from './routes/feedback.js';
+import multer from 'multer';
+import fs from 'fs';
+
+// ES Module fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -11,14 +25,15 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static('uploads'));
+
 
 // Connect to MongoDB
 connectDB();
@@ -40,7 +55,6 @@ app.get('/api/test/db', async (req, res) => {
 // Test route to create a sample user
 app.post('/api/test/user', async (req, res) => {
     try {
-        const User = require('./models/User');
         const testUser = new User({
             name: 'Test User',
             email: `test${Date.now()}@example.com`,
@@ -61,12 +75,16 @@ app.post('/api/test/user', async (req, res) => {
     }
 });
 
-// Routes
-const authRoutes = require('./routes/auth');
-const bookRoutes = require('./routes/books');
-const notesRoutes = require('./routes/notes');
-const questionPapersRoutes = require('./routes/questionPapers');
-const feedbackRoutes = require('./routes/feedback');
+// Create uploads directories if they don't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const booksDir = path.join(uploadsDir, 'books');
+
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(booksDir)) {
+    fs.mkdirSync(booksDir);
+}
 
 // Apply routes
 app.use('/api/auth', authRoutes);
@@ -95,6 +113,14 @@ app.use((err, req, res, next) => {
         });
     }
 
+    // Handle file upload errors
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ 
+            message: 'File upload error', 
+            error: err.message 
+        });
+    }
+
     // Handle other errors
     res.status(err.status || 500).json({
         status: 'error',
@@ -102,7 +128,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log('Environment:', process.env.NODE_ENV);

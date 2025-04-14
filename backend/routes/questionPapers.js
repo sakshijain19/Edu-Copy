@@ -1,9 +1,15 @@
-const express = require('express');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import QuestionPaper from '../models/QuestionPaper.js';
+import auth from '../middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const QuestionPaper = require('../models/QuestionPaper');
-const auth = require('../middleware/auth');
 
 // Configure multer for PDF upload
 const storage = multer.diskStorage({
@@ -158,11 +164,11 @@ router.delete('/:id', auth, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this question paper' });
         }
 
-        await questionPaper.remove();
+        await QuestionPaper.findByIdAndDelete(req.params.id);
         res.json({ message: 'Question paper deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting question paper', error: error.message });
     }
 });
 
-module.exports = router; 
+export default router; 

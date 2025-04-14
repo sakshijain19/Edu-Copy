@@ -1,6 +1,4 @@
-const express = require('express');
-const router = express.Router();
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const auth = (req, res, next) => {
     try {
@@ -39,14 +37,4 @@ const auth = (req, res, next) => {
     }
 };
 
-// Token verification endpoint
-router.get('/verify', auth, (req, res) => {
-  res.status(200).json({ 
-    isAuthenticated: true,
-    user: req.user 
-  });
-});
-
-// Other routes...
-
-module.exports = router;
+export default auth;
