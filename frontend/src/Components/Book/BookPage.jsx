@@ -533,13 +533,20 @@ const BooksPage = () => {
                           Phone Number*
                         </label>
                         <Input
-                          type="tel"
-                          name="phone"
-                          value={sellFormData.phone}
-                          onChange={handleSellFormChange}
-                          placeholder="+91XXXXXXXXXX"
-                          pattern="^\+91[0-9]{10}$"
-                          required
+                        type="tel" 
+                        name="phone" 
+                        placeholder="+91XXXXXXXXXX" 
+                        pattern="^(\+91[\s]?)?[0]?[6-9]\d{9}$" 
+                        required 
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      
+                          // type="tel"
+                          // name="phone"
+                          // value={sellFormData.phone}
+                          // onChange={handleSellFormChange}
+                          // placeholder="+91XXXXXXXXXX"
+                          // pattern="^\+91[0-9]{10}$"
+                          // required
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Format: +91XXXXXXXXXX
@@ -549,14 +556,21 @@ const BooksPage = () => {
                         <label className="block text-sm font-medium mb-1">
                           UPI ID*
                         </label>
-                        <Input
-                          type="text"
-                          name="upiId"
-                          value={sellFormData.upiId}
-                          onChange={handleSellFormChange}
-                          placeholder="Enter UPI ID (@ybl)"
-                          pattern=".*@ybl$"
-                          required
+                        <Input 
+                        type="text" 
+                        name="upiId" 
+                        placeholder="Enter UPI ID (@ybl)" 
+                        pattern="^[a-zA-Z0-9.\-_]{2,}@ybl$" 
+                        required 
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      
+                          // type="text"
+                          // name="upiId"
+                          // value={sellFormData.upiId}
+                          // onChange={handleSellFormChange}
+                          // placeholder="Enter UPI ID (@ybl)"
+                          // pattern=".*@ybl$"
+                          // required
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Must end with @ybl
@@ -576,9 +590,13 @@ const BooksPage = () => {
                         />
                       </div>
                     </div>
+
+                    
                     <Button
-                      type="submit"
-                      className="w-full bg-[#4285f4] hover:bg-[#3367d6] text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                     type="submit"
+  class="w-full h-10 px-4 py-3 rounded-lg text-sm font-medium text-white bg-[#4285f4] hover:bg-[#3367d6] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                      // type="submit"
+                      // className="w-full bg-[#4285f4] hover:bg-[#3367d6] text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
                     >
                       List Book for Sale
                     </Button>
