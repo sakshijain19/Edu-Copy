@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
+import feedbackService from "../../services/feedbackService.js";
 
 const FeedbackSection = () => {
   const [feedback, setFeedback] = useState("");
@@ -44,10 +44,9 @@ const FeedbackSection = () => {
     try {
       const token = localStorage.getItem("token");
       
-      await axios.post(
-        "/api/feedback", 
+      await feedbackService.submitFeedback(
         { rating, comment: feedback, category },
-        { headers: { Authorization: `Bearer ${token}` } }
+        token
       );
       
       setSuccess(true);

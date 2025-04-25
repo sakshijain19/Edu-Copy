@@ -219,7 +219,7 @@ const getFeedbackStats = async (req, res) => {
     }
 };
 
-module.exports = {
+exports = {
     getAllFeedback,
     submitFeedback,
     getFeedbackById,
