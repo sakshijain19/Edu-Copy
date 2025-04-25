@@ -1,14 +1,13 @@
-const express = require('express');
-const router = express.Router();
-const { 
+import express from 'express';
+import { 
   uploadNote,
   getAllNotes,
   getNoteById,
   downloadNote,
   addReview
-} = require('../controllers/noteController');
-const auth = require('../middleware/auth');
-const multer = require('multer');
+} from '../controllers/noteController.js';
+import auth from '../middleware/auth.js';
+import multer from 'multer';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -31,4 +30,4 @@ router.post('/', auth, upload.single('file'), uploadNote);
 router.get('/:id/download', auth, downloadNote);
 router.post('/:id/review', auth, addReview);
 
-module.exports = router; 
+export default router;

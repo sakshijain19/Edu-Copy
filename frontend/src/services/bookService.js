@@ -1,122 +1,116 @@
 import axios from 'axios';
 
-// Use the backend URL from the environment variable
-const API = import.meta.env.VITE_BACKEND_URL;
+// Create an axios instance with the backend base URL and credentials
+const API = axios.create({
+  baseURL: import.meta.env.VITE_BACKEND_URL,  // e.g. http://localhost:5001/api/books
+  withCredentials: true,
+});
 
-
-// Helper function to get the auth header
+// Helper to get Authorization header
 const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Get all books with optional filters
+// Fetch all books with optional filter query params
 const getAllBooks = async (filters = {}) => {
   try {
-    const queryParams = new URLSearchParams();
-    if (filters.search) queryParams.append("search", filters.search);
-    if (filters.location) queryParams.append("location", filters.location);
-    if (filters.minPrice) queryParams.append("minPrice", filters.minPrice);
-    if (filters.maxPrice) queryParams.append("maxPrice", filters.maxPrice);
-    if (filters.language) queryParams.append("language", filters.language);
-    if (filters.condition) queryParams.append("condition", filters.condition);
-    
-    const url = `${API}?${queryParams.toString()}`;
-    const response = await axios.get(url);
+    const response = await API.get('/', { params: filters });
     return response.data;
   } catch (error) {
-    console.error("Error fetching books:", error);
+    console.error('Error fetching books:', error);
     throw error;
   }
 };
 
-// Get a book by ID
+// Fetch a single book by ID
 const getBookById = async (id) => {
   try {
-    const response = await axios.get(`${API}/${id}`);
+    const response = await API.get(`/${id}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching book:", error);
+    console.error('Error fetching book by ID:', error);
     throw error;
   }
 };
 
-// Create a new book listing
+// Create a new book listing (with image upload)
 const createBook = async (bookData) => {
   try {
     const formData = new FormData();
-    Object.keys(bookData).forEach((key) => {
-      // Map the file field to 'image' as expected by the backend
-      if (key === "bookImage") {
-        formData.append("image", bookData.bookImage);
+    Object.entries(bookData).forEach(([key, value]) => {
+      if (key === 'bookImage') {
+        formData.append('image', value);
       } else {
-        formData.append(key, bookData[key]);
+        formData.append(key, value);
       }
     });
-    const response = await axios.post(`${API}/list`, formData, {
+
+    const response = await API.post('/list', formData, {
       headers: {
         ...getAuthHeader(),
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
     return response.data;
   } catch (error) {
-    console.error("Error creating book listing:", error);
+    console.error('Error creating book listing:', error);
     throw error;
   }
 };
 
-// Update a book listing
+// Update an existing book (with optional new image)
 const updateBook = async (id, bookData) => {
   try {
     const formData = new FormData();
-    Object.keys(bookData).forEach((key) => {
-      if (key === "bookImage" && bookData.bookImage) {
-        formData.append("image", bookData.bookImage);
-      } else if (bookData[key] !== undefined) {
-        formData.append(key, bookData[key]);
+    Object.entries(bookData).forEach(([key, value]) => {
+      if (key === 'bookImage' && value) {
+        formData.append('image', value);
+      } else if (value !== undefined) {
+        formData.append(key, value);
       }
     });
-    const response = await axios.put(`${API}/${id}`, formData, {
+
+    const response = await API.put(`/${id}`, formData, {
       headers: {
         ...getAuthHeader(),
-        "Content-Type": "multipart/form-data",
+        'Content-Type': 'multipart/form-data',
       },
     });
     return response.data;
   } catch (error) {
-    console.error("Error updating book:", error);
+    console.error('Error updating book:', error);
     throw error;
   }
 };
 
-// Delete a book listing
+// Delete a book listing by ID
 const deleteBook = async (id) => {
   try {
-    const response = await axios.delete(`${API}/${id}`, {
+    const response = await API.delete(`/${id}`, {
       headers: getAuthHeader(),
     });
     return response.data;
   } catch (error) {
-    console.error("Error deleting book:", error);
+    console.error('Error deleting book:', error);
     throw error;
   }
 };
 
-// Send message to seller
+// Send a message to the seller for a given book
 const sendMessageToSeller = async (bookId, messageData) => {
   try {
-    const response = await axios.post(`${API}/${bookId}/message`, messageData, {
+    const response = await API.post(`/${bookId}/message`, messageData, {
       headers: getAuthHeader(),
     });
     return response.data;
   } catch (error) {
-    console.error("Error sending message:", error);
+    console.error('Error sending message to seller:', error);
     throw error;
   }
 };
 
-const bookService = {
+export default {
   getAllBooks,
   getBookById,
   createBook,
@@ -124,5 +118,3 @@ const bookService = {
   deleteBook,
   sendMessageToSeller,
 };
-
-export default bookService;

@@ -1,14 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const { 
+import express from 'express';
+import multer from 'multer';
+import { 
   createBook,
   getAllBooks,
   getBookById,
   updateBookStatus,
   deleteBook
-} = require('../controllers/bookController');
-const auth = require('../middleware/auth');
+} from '../controllers/bookController.js';
+import auth from '../middleware/auth.js';
+
+const router = express.Router();
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
@@ -31,4 +32,4 @@ router.post('/', auth, upload.array('images', 5), createBook);
 router.patch('/:id/status', auth, updateBookStatus);
 router.delete('/:id', auth, deleteBook);
 
-module.exports = router;
+export default router;

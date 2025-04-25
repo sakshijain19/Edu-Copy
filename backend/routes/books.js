@@ -49,13 +49,12 @@ router.post('/list', auth, upload.single('image'), async (req, res) => {
             price,
             location,
             description,
-            upiId,
             phone,
             status = 'available'
         } = req.body;
 
         // Validate required fields
-        if (!title || !author || !category || !condition || !price || !location || !description || !upiId || !phone) {
+        if (!title || !author || !category || !condition || !price || !location || !description || !phone) {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
@@ -69,10 +68,7 @@ router.post('/list', auth, upload.single('image'), async (req, res) => {
             return res.status(400).json({ message: 'Invalid phone number format' });
         }
 
-        // Validate UPI ID
-        if (!upiId.endsWith('@ybl')) {
-            return res.status(400).json({ message: 'UPI ID must end with @ybl' });
-        }
+
 
         if (!req.file) {
             return res.status(400).json({ message: 'Book image is required' });
@@ -86,7 +82,6 @@ router.post('/list', auth, upload.single('image'), async (req, res) => {
             price: Number(price),
             location,
             description,
-            upiId,
             phone,
             status,
             image: `/uploads/books/${req.file.filename}`,
@@ -222,4 +217,4 @@ router.post('/:id/message', auth, async (req, res) => {
     }
 });
 
-export default router; 
+export default router;

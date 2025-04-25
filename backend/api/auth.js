@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 const BASE_URL = '/api/auth';
 
 // API service for authentication
@@ -60,4 +60,4 @@ const authService = {
   }
 };
 
-module.exports = authService;
+export default authService;

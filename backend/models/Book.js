@@ -43,16 +43,7 @@ const bookSchema = new mongoose.Schema({
         required: [true, 'Location is required'],
         trim: true
     },
-    upiId: {
-        type: String,
-        required: [true, 'UPI ID is required'],
-        validate: {
-            validator: function(v) {
-                return v.endsWith('@ybl');
-            },
-            message: 'UPI ID must end with @ybl'
-        }
-    },
+
     phone: {
         type: String,
         required: [true, 'Phone number is required'],
@@ -94,4 +85,4 @@ bookSchema.index({
 });
 
 const Book = mongoose.model('Book', bookSchema);
-export default Book; 
+export default Book;

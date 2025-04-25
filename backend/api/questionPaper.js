@@ -1,13 +1,12 @@
-const express = require('express');
-const router = express.Router();
-const { 
+import express from 'express';
+import { 
   uploadQuestionPaper,
   getQuestionPapers,
   getQuestionPaperById,
   downloadQuestionPaper
-} = require('../controllers/questionPaperController');
-const auth = require('../middleware/auth');
-const multer = require('multer');
+} from '../controllers/questionPaperController.js';
+import auth from '../middleware/auth.js';
+import multer from 'multer';
 
 // Configure multer for PDF uploads
 const storage = multer.diskStorage({
@@ -38,4 +37,4 @@ router.get('/:id', getQuestionPaperById);
 router.post('/', auth, upload.single('file'), uploadQuestionPaper);
 router.get('/:id/download', auth, downloadQuestionPaper);
 
-module.exports = router; 
+export default router;

@@ -1,14 +1,26 @@
-/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { ArrowUpTrayIcon, MagnifyingGlassIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 export default function Notes() {
   const [activeTab, setActiveTab] = useState('search');
   const [searchTerm, setSearchTerm] = useState('');
-  const [subject, setSubject] = useState('All Subjects');
   const [noteTitle, setNoteTitle] = useState('');
   const [noteFile, setNoteFile] = useState(null);
   const [error, setError] = useState(''); // State for error messages
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append("title", noteTitle);
+      formData.append("file", noteFile);
+      await axios.post("/api/notes/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert('Note uploaded successfully!');
+    } catch (err) {
+      setError(err.message || 'Failed to upload note');
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -28,7 +40,7 @@ export default function Notes() {
     e.preventDefault();
 
     // Validation
-    if (!noteTitle || !subject || !noteFile) {
+    if (!noteTitle || !noteFile) {
       setError('All fields are required.');
       return;
     }
@@ -36,7 +48,7 @@ export default function Notes() {
     // Clear error if validation passes
     setError('');
 
-    console.log('Uploading:', { noteTitle, subject, noteFile });
+    console.log('Uploading:', { noteTitle, noteFile });
     alert('Note uploaded successfully!');
   };
 
@@ -82,8 +94,7 @@ export default function Notes() {
 
   const filteredNotes = sampleNotes.filter((note) => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSubject = subject === 'All Subjects' || note.subject === subject;
-    return matchesSearch && matchesSubject;
+    return matchesSearch;
   });
 
   return (
@@ -139,36 +150,6 @@ export default function Notes() {
                     />
                   </div>
                 </div>
-                <select
-                  id="subject"
-                  name="subject"
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                >
-                  <option>All Subjects</option>
-                  <option>Discrete Mathematics</option>
-                  <option>Fundamentals of Data Structures</option>
-                  <option>Object Oriented Programming (OOP)</option>
-                  <option>Computer Graphics 17</option>
-                  <option>Digital Electronics and Logic Design</option>
-                  <option>Engineering Mathematics - III</option>
-                  <option>Design and Analysis of Algorithms</option>
-                  <option>System Programming & Operating Systems</option>
-                  <option>Database Management Systems</option>
-                  <option>Software Engineering</option>
-                  <option>Microprocessor</option>
-                  <option>Computer Networks</option>
-                  <option>Theory of Computation</option>
-                  <option>Machine Learning</option>
-                  <option>Cloud Computing</option>
-                  <option>Artificial Intelligence</option>
-                  <option>Mobile Computing</option>
-                  <option>Cyber Security & Digital Forensics</option>
-                  <option>Internet of Things (IoT)</option>
-                  <option>Blockchain Technology</option>
-                  <option>Human Computer Interaction</option>
-                </select>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredNotes.map((note, index) => (
@@ -176,7 +157,7 @@ export default function Notes() {
                     <div className="px-4 py-5 sm:p-6">
                       <h3 className="text-lg font-medium text-gray-900">{note.title}</h3>
                       <p className="mt-1 text-sm text-gray-500">
-                        {note.subject} - {note.author}
+                        {note.author ? note.author : ''}
                       </p>
                       <div className="mt-4 flex space-x-2">
                         <button
@@ -226,30 +207,11 @@ export default function Notes() {
                       required
                     />
                   </div>
+
                   <div>
-                    <label htmlFor="upload-subject" className="block text-sm font-medium text-gray-700">
-                      Subject (Required)
-                    </label>
-                    <select
-                      id="upload-subject"
-                      name="upload-subject"
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      required
-                    >
-                      <option value="">Select subject</option>
-                      <option>Discrete Mathematics</option>
-                      <option>Web Development</option>
-                      <option>Computer Science</option>
-                      <option>Artificial Intelligence</option>
-                      <option>Programming</option>
-                    </select>
-                  </div>
-                  <div>
-                    <button
+                  <button
                       type="submit"
-                      className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-black bg-blue hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
                     >
                       Upload Notes
                     </button>
