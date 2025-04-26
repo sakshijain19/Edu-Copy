@@ -139,7 +139,7 @@ const BooksPage = () => {
       "location",
       "description",
     ];
-
+    alert('Book listed successfully!');
     for (const field of requiredFields) {
       if (!sellFormData[field]) {
         toast.error(`Please fill in the ${field.replace(/([A-Z])/g, " $1").toLowerCase()}.`);
@@ -549,7 +549,7 @@ const BooksPage = () => {
                           name="description"
                           value={sellFormData.description}
                           onChange={handleSellFormChange}
-                          placeholder="Describe your book's condition, edition, or any other relevant details"
+                          placeholder="Describe your book's condition or any other relevant details"
                           className="w-full min-h-[100px] p-2 border rounded-md"
                           required
                         />
@@ -596,13 +596,13 @@ const BooksPage = () => {
                 <IndianRupee className="w-4 h-4 mr-2" /> ₹{selectedBook.price}
               </p>
               <p className="text-gray-700 mb-2">
-                <strong>Edition:</strong> {selectedBook.edition}
+                <strong>Category:</strong> {selectedBook.category}
               </p>
               <p className="text-gray-700 mb-2">
-                <strong>Language:</strong> {selectedBook.language}
+                <strong>Book Condition:</strong> {selectedBook.bookCondition}
               </p>
               <p className="text-gray-700 mb-2">
-                <strong>upiId:</strong> {selectedBook.upiId}
+                <strong>Location:</strong> {selectedBook.location}
               </p>
               <p className="text-gray-700 mb-4">
                 <strong>Description:</strong> {selectedBook.description}

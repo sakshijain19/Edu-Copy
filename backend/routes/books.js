@@ -201,11 +201,6 @@ router.post('/:id/message', auth, async (req, res) => {
         if (!book) {
             return res.status(404).json({ message: 'Book not found' });
         }
-
-        // Here you would typically:
-        // 1. Save the message to a database
-        // 2. Send a notification to the seller
-        // 3. Send an email/SMS to the seller
         
         res.json({ 
             message: 'Message sent successfully',

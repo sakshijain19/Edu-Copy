@@ -6,10 +6,6 @@ const noteSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    description: {
-        type: String,
-        required: true
-    },
     subject: {
         type: String,
         required: true
@@ -60,4 +56,4 @@ const noteSchema = new mongoose.Schema({
 });
 
 const Note = mongoose.model('Note', noteSchema);
-export default Note; 
+export default Note;

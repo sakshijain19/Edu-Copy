@@ -1,34 +1,94 @@
-import React, { useState } from 'react';
-import { ArrowUpTrayIcon, MagnifyingGlassIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+// src/components/Notes.jsx
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import noteService from '../../services/noteService';
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 export default function Notes() {
   const [activeTab, setActiveTab] = useState('search');
   const [searchTerm, setSearchTerm] = useState('');
+
   const [noteTitle, setNoteTitle] = useState('');
+  const [noteSubject, setNoteSubject] = useState('');
+  const [noteCourse, setNoteCourse] = useState('');
+  const [noteSemester, setNoteSemester] = useState('');
   const [noteFile, setNoteFile] = useState(null);
-  const [error, setError] = useState(''); // State for error messages
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [error, setError] = useState('');
+  const [notes, setNotes] = useState([]);
+
+  // grab JWT from localStorage (must match what your login stores)
+  const token = localStorage.getItem('token');
+
+  // Fetch all notes on mount (optional)
+  useEffect(() => {
+    if (activeTab === 'search') {
+      fetchNotes();
+    }
+    // eslint-disable-next-line
+  }, [activeTab]);
+
+  const fetchNotes = async (term = '') => {
     try {
-      const formData = new FormData();
-      formData.append("title", noteTitle);
-      formData.append("file", noteFile);
-      await axios.post("/api/notes/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      alert('Note uploaded successfully!');
+      const data = term
+        ? await noteService.searchNotes(term)
+        : await noteService.getAllNotes();
+      setNotes(data);
     } catch (err) {
-      setError(err.message || 'Failed to upload note');
+      setError('Failed to fetch notes');
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleSearch = async e => {
+    e.preventDefault();
+    fetchNotes(searchTerm);
+  };
+
+  const handleUpload = async e => {
+    e.preventDefault();
+
+    if (!noteTitle || !noteSubject || !noteCourse || !noteSemester || !noteFile) {
+      setError('All fields are required.');
+      return;
+    }
+    setError('');
+
+    const formData = new FormData();
+    formData.append('title', noteTitle);
+    formData.append('subject', noteSubject);
+    formData.append('course', noteCourse);
+    formData.append('semester', noteSemester);
+    formData.append('file', noteFile);
+    for (let pair of formData.entries()) console.log(pair[0], pair[1]);
+
+    try {
+      const result = await noteService.uploadNote(
+        noteTitle, 
+        noteSubject, 
+        noteCourse, 
+        noteSemester, 
+        noteFile, 
+        token
+      );
+      console.log('Upload result', result);
+      alert('Note uploaded successfully!');
+      setNoteTitle('');
+      setNoteSubject('');
+      setNoteCourse('');
+      setNoteSemester('');
+      setNoteFile(null);
+    } catch (err) {
+      console.error('Upload error', err.response || err);
+      setError(err.response?.data?.message || err.message || 'Failed to upload note');
+    }
+  };
+
+  const handleFileChange = e => {
     const file = e.target.files[0];
     if (file) {
-      const allowedExtensions = ['pdf', 'docx', 'doc'];
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      if (!allowedExtensions.includes(fileExtension)) {
-        alert('Only PDF, DOCX, and DOC files are allowed.');
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext !== 'pdf') {
+        alert('Only PDF files are allowed');
         e.target.value = '';
         return;
       }
@@ -36,192 +96,160 @@ export default function Notes() {
     }
   };
 
-  const handleUpload = (e) => {
-    e.preventDefault();
-
-    // Validation
-    if (!noteTitle || !noteFile) {
-      setError('All fields are required.');
-      return;
+  const handleDownload = async (noteId, noteTitle) => {
+    try {
+      const blob = await noteService.downloadNote(noteId, token);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${noteTitle}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      setError('Failed to download note');
     }
-
-    // Clear error if validation passes
-    setError('');
-
-    console.log('Uploading:', { noteTitle, noteFile });
-    alert('Note uploaded successfully!');
   };
-
-  const handleDownload = (note) => {
-    const fileName = `${note.title}.${note.type.toLowerCase()}`;
-    const blob = new Blob(['Sample file content'], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const sampleNotes = [
-    { title: 'Discrete Mathematics', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'Computer Graphics', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'Database Management Systems', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'Digital Electronics and Logic Design', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'Object Oriented Programming (OOP)', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'System Programming & Operating Systems', subject: 'Computer Science', author: '', type: 'PDF' },
-    { title: 'Design and Analysis of Algorithms', subject: 'Computer Science', author: 'Dr. Smith', type: 'PDF' },
-    { title: 'Engineering Mathematics - III', subject: 'Computer Science', author: 'Prof. Johnson', type: 'DOC' },
-    { title: 'Machine Learning Fundamentals', subject: 'Artificial Intelligence', author: 'Dr. Lee', type: 'PDF' },
-    { title: 'CSS Basics', subject: 'Web Development', author: 'Prof. Miller', type: 'DOCX' },
-    { title: 'Python for Beginners', subject: 'Programming', author: 'Dr. Brown', type: 'PDF' },
-    { title: 'Cyber Security & Digital Forensics', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Internet of Things (IoT)', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Blockchain Technology', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Human Computer Interaction', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Web Technology', subject: 'Web Development', author: 'Prof. Miller', type: 'DOCX' },
-    { title: 'Deep Learning', subject: 'Computer Science', author: 'Dr. Brown', type: 'PDF' },
-    { title: 'Natural Language Processing', subject: 'Computer Science', author: 'Dr. Brown', type: 'PDF' },
-    { title: 'Software Engineering', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Microprocessor', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Computer Networks', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Theory of Computation', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Cloud Computing', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Data Science and Big Data Analytics', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Artificial Intelligence', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-    { title: 'Mobile Computing', subject: 'Computer Science', author: 'abc', type: 'PDF' },
-  ];
-
-  const filteredNotes = sampleNotes.filter((note) => {
-    const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
 
   return (
-    <div className="mt-12 mb-12 p-6 w-full max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="px-4 py-5 sm:p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Notes</h2>
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex" aria-label="Tabs">
-              <button
-                onClick={() => setActiveTab('search')}
-                className={`${
-                  activeTab === 'search'
-                    ? 'border-gray-500 text-gray-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
-              >
-                Search Notes
-              </button>
-              <button
-                onClick={() => setActiveTab('upload')}
-                className={`${
-                  activeTab === 'upload'
-                    ? 'border-gray-500 text-gray-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
-              >
-                Upload Notes
-              </button>
-            </nav>
-          </div>
-
-          {activeTab === 'search' ? (
-            <div className="mt-6">
-              <p className="text-sm text-gray-500 mb-4">Find study materials uploaded by students.</p>
-              <div className="flex gap-4 mb-6">
-                <div className="flex-grow">
-                  <label htmlFor="search" className="sr-only">
-                    Search notes
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                    </div>
-                    <input
-                      type="search"
-                      name="search"
-                      id="search"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      placeholder="Search notes..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredNotes.map((note, index) => (
-                  <div key={index} className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="px-4 py-5 sm:p-6">
-                      <h3 className="text-lg font-medium text-gray-900">{note.title}</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {note.author ? note.author : ''}
-                      </p>
-                      <div className="mt-4 flex space-x-2">
-                        <button
-                          onClick={() => handleDownload(note)}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          <ArrowDownTrayIcon className="mr-2 -ml-1 h-5 w-5 text-gray-400" aria-hidden="true" />
-                          Download {note.type}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-6">
-              <p className="text-sm text-gray-500 mb-4">Share your study materials with students.</p>
-              {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-              <form onSubmit={handleUpload}>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="note-file" className="block text-sm font-medium text-gray-700">
-                      Note File (Required)
-                    </label>
-                    <input
-                      id="note-file"
-                      name="note-file"
-                      type="file"
-                      className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      onChange={handleFileChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="note-title" className="block text-sm font-medium text-gray-700">
-                      Note Title (Required)
-                    </label>
-                    <input
-                      type="text"
-                      name="note-title"
-                      id="note-title"
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      placeholder="Enter note title"
-                      value={noteTitle}
-                      onChange={(e) => setNoteTitle(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                  <button
-                      type="submit"
-                      className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-black bg-blue hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
-                    >
-                      Upload Notes
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          )}
+    <div className="mt-12 mb-12 p-6 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">Notes</h2>
+      <div className="border-b mb-4">
+        <div className="flex mb-4 gap-2">
+          <button
+            onClick={() => setActiveTab('search')}
+            className={`px-4 py-2 rounded-md transition-all duration-300 font-semibold ${
+              activeTab === 'search'
+                ? 'bg-gray-600 text-white shadow'
+                : 'bg-gray-200 text-gray-800'
+            } focus:outline-none hover:bg-gray-400`}
+          >
+            Search
+          </button>
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`px-4 py-2 rounded-md transition-all duration-300 font-semibold ${
+              activeTab === 'upload'
+                ? 'bg-gray-600 text-white shadow'
+                : 'bg-gray-200 text-gray-800'
+            } focus:outline-none hover:bg-gray-400`}
+          >
+            Upload
+          </button>
         </div>
       </div>
+
+      {activeTab === 'search' ? (
+        <>
+          <form onSubmit={handleSearch} className="mb-6">
+            <div className="flex">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search notes..."
+                className="flex-grow p-2 border rounded-l"
+              />
+              <button type="submit" className="px-4 bg-blue-600 text-white rounded-r">
+                <MagnifyingGlassIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </form>
+          {error && <p className="text-red-500">{error}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            {notes.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500">No notes found.</div>
+            ) : (
+              notes.map(note => (
+                <div
+                  key={note._id}
+                  className="bg-white rounded-lg shadow-md p-4 flex flex-col justify-between"
+                >
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">{note.title}</h3>
+                    <div className="text-gray-700 text-sm mb-2">{note.subject}</div>
+                    <div className="text-gray-500 text-xs mb-2">{note.course}</div>
+                    <div className="text-gray-400 text-xs mb-4">Semester: {note.semester}</div>
+                  </div>
+                  <button
+                    onClick={() => handleDownload(note._id, note.title)}
+                    className="flex items-center justify-center border border-blue-500 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+                    Download PDF
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : (
+        <form onSubmit={handleUpload} className="space-y-4">
+          {error && <p className="text-red-500">{error}</p>}
+          <div>
+            <label className="block mb-1">Note File*</label>
+            <input type="file" onChange={handleFileChange} className="block w-full" required />
+          </div>
+          <div>
+            <label className="block mb-1">Note Title*</label>
+            <input
+              type="text"
+              value={noteTitle}
+              onChange={e => setNoteTitle(e.target.value)}
+              className="block w-full p-2 border rounded"
+              placeholder="Enter note title"
+              required
+            />
+          </div>
+          {/* REMOVE DESCRIPTION FIELD */}
+          <div>
+            <label className="block mb-1">Subject*</label>
+            <input
+              type="text"
+              value={noteSubject}
+              onChange={e => setNoteSubject(e.target.value)}
+              className="block w-full p-2 border rounded"
+              placeholder="Enter subject"
+              required
+            />
+          </div>
+          <div>
+            <label className="block mb-1">Course*</label>
+            <select
+              value={noteCourse}
+              onChange={e => setNoteCourse(e.target.value)}
+              className="block w-full p-2 border rounded"
+              required
+            >
+              <option value="">Select Course</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+              <option value="Computer Engineering">Computer Engineering</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
+              <option value="Electronics and Telecommunication Engineering">Electronics and Telecommunication Engineering</option>
+              <option value="Artificial Intelligence and Data Science">Artificial Intelligence and Data Science</option>
+            </select>
+          </div>
+          <div>
+            <label className="block mb-1">Semester*</label>
+            <input
+              type="number"
+              min="1"
+              max="8"
+              value={noteSemester}
+              onChange={e => setNoteSemester(e.target.value)}
+              className="block w-full p-2 border rounded"
+              placeholder="Enter semester number"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors duration-300 text-center"
+          >
+            Upload Notes
+          </button>
+        </form>
+      )}
     </div>
   );
 }
