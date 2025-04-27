@@ -598,12 +598,6 @@ const BooksPage = () => {
               <p className="text-gray-700 mb-2">
                 <strong>Category:</strong> {selectedBook.category}
               </p>
-              <p className="text-gray-700 mb-2">
-                <strong>Book Condition:</strong> {selectedBook.bookCondition}
-              </p>
-              <p className="text-gray-700 mb-2">
-                <strong>Location:</strong> {selectedBook.location}
-              </p>
               <p className="text-gray-700 mb-4">
                 <strong>Description:</strong> {selectedBook.description}
               </p>
