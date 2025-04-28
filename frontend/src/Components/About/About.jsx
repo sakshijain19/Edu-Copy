@@ -1,8 +1,10 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable no-unused-vars */
 import React from 'react';
-import { FaUserCircle } from 'react-icons/fa'; // Importing icon for placeholder image
-
+import Founder1 from '../Images/Founder 1.jpg';
+import Founder2 from '../Images/Founder 2.png';
+import Founder3 from '../Images/Founder 3.png';
+import Founder4 from '../Images/Founder 4.png';
 export default function About() {
     return (
         <div className="py-16 bg-white">
@@ -30,21 +32,30 @@ export default function About() {
                     </div>
                 </div>
 
-               {/* Meet Our Founders Section */}
-               <div className="mt-16 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">Meet Our Founders</h2>
-                    <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 justify-center">
-                        {/* Founder Card Component */}
-                        {["Founder 1", "Founder 2", "Founder 3", "Founder 4"].map((founder, index) => (
-                            <div key={index} className="flex flex-col items-center">
-                                {/* Empty Image Icon */}
-                                <FaUserCircle className="text-gray-400 w-24 h-24" />
-                                <h4 className="mt-4 text-lg font-semibold text-gray-900">{founder}</h4>
-                                <p className="text-gray-600">Co-Founder</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+{/* Meet Our Founders Section */}
+<div className="mt-16 text-center">
+  <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">Meet Our Founders</h2>
+  <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-10 justify-center">
+    {/* Founder Card Component */}
+    {[
+      { name: "Leena Chaudhari", img: Founder1 },
+      { name: "Sakshi Jain", img: Founder2 },
+      { name: "Sonali Bachhav", img: Founder3 },
+      { name: "Raksha Sancheti", img: Founder4 },
+    ].map((founder, index) => (
+      <div key={index} className="flex flex-col items-center">
+        <img
+          src={founder.img}
+          alt={founder.name}
+          className="w-40 h-40 object-cover rounded-full border-4 border-gray-300 shadow-md hover:scale-105 transition-transform duration-300"
+        />
+        <h4 className="mt-4 text-xl font-semibold text-gray-900">{founder.name}</h4>
+        <p className="text-gray-600">Co-Founder</p>
+      </div>
+    ))}
+  </div>
+</div>
+
             </div>
         </div>
     );
