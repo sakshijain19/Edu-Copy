@@ -281,6 +281,6 @@ export default function Notes() {
           </button>
         </form>
       )}
-    </div>
-  );
+    </div>
+  );
 }
