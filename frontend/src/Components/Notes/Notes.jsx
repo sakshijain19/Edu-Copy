@@ -1,4 +1,3 @@
-// src/components/Notes.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ArrowUpTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -16,6 +15,7 @@ export default function Notes() {
   const [noteFile, setNoteFile] = useState(null);
   const [error, setError] = useState('');
   const [notes, setNotes] = useState([]);
+  const [filterCourse, setFilterCourse] = useState('');
 
   // grab JWT from localStorage (must match what your login stores)
   const token = localStorage.getItem('token');
@@ -28,11 +28,15 @@ export default function Notes() {
     // eslint-disable-next-line
   }, [activeTab]);
 
+  
   const fetchNotes = async (term = '') => {
     try {
       const data = term
         ? await noteService.searchNotes(term)
         : await noteService.getAllNotes();
+    if (filterCourse) {
+      data = data.filter(note => note.course === filterCourse);
+    }
       setNotes(data);
     } catch (err) {
       setError('Failed to fetch notes');
@@ -141,7 +145,7 @@ export default function Notes() {
 
       {activeTab === 'search' ? (
         <>
-          <form onSubmit={handleSearch} className="mb-6">
+          {/* <form onSubmit={handleSearch} className="mb-6">
             <div className="flex">
               <input
                 type="text"
@@ -154,7 +158,34 @@ export default function Notes() {
                 <MagnifyingGlassIcon className="h-5 w-5" />
               </button>
             </div>
-          </form>
+          </form> */}
+           <form onSubmit={handleSearch} className="mb-6">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-1">
+          <input
+           type="text"
+           value={searchTerm}
+           onChange={e => setSearchTerm(e.target.value)}
+           placeholder="Search notes..."
+           className="flex-grow p-2 border rounded-l"
+          />
+          <button type="submit" className="px-4 bg-blue-600 text-white rounded-r"> 
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <select
+          value={filterCourse}
+          onChange={e => setFilterCourse(e.target.value)}
+          className="p-2 border rounded md:w-64" >
+          <option value="">All Courses</option>
+          <option value="Civil Engineering">Civil Engineering</option>
+          <option value="Computer Engineering">Computer Engineering</option>
+          <option value="Mechanical Engineering">Mechanical Engineering</option>
+          <option value="Electronics and Telecommunication Engineering">Electronics and Telecommunication Engineering</option>
+          <option value="Artificial Intelligence and Data Science">Artificial Intelligence and Data Science</option>
+        </select>
+      </div>
+    </form>
           {error && <p className="text-red-500">{error}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             {notes.length === 0 ? (
@@ -250,6 +281,6 @@ export default function Notes() {
           </button>
         </form>
       )}
-    </div>
-  );
+    </div>
+  );
 }
